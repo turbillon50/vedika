@@ -1,0 +1,5 @@
+uploads/
+*.docx
+.git
+.gitignore
+README.md
