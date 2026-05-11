@@ -7,7 +7,7 @@
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json"/>
-<meta name="theme-color" content="#0B1733"/>
+<meta name="theme-color" content="#050B1F"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -22,39 +22,131 @@
 <link rel="stylesheet" href="vedika.css"/>
 
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0B1733; }
-  body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  :root { --vh: 100vh; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #050B1F; color: #FBFAF7;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+  }
   #root { position: fixed; inset: 0; }
+
+  /* Pre-React splash: paints on first frame so the open feels instant */
+  #boot-splash {
+    position: fixed; inset: 0; z-index: 999;
+    background: radial-gradient(ellipse at 50% 30%, #15244E 0%, #0B1733 45%, #050B1F 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #FBFAF7;
+    transition: opacity 480ms cubic-bezier(.22,.61,.36,1);
+    will-change: opacity;
+  }
+  #boot-splash.hide { opacity: 0; pointer-events: none; }
+  #boot-splash .ring {
+    position: absolute; left: 50%; top: 38%;
+    width: 240px; height: 240px; margin: -120px 0 0 -120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,175,92,0.18) 0%, rgba(212,175,92,0) 65%);
+    animation: bsPulse 2400ms ease-in-out infinite;
+  }
+  @keyframes bsPulse { 0%, 100% { transform: scale(0.92); opacity: .8; } 50% { transform: scale(1.06); opacity: 1; } }
+  #boot-splash .knot {
+    width: 110px; height: 110px; position: relative; z-index: 2;
+    animation: bsFadeUp 700ms cubic-bezier(.22,.61,.36,1) both;
+  }
+  #boot-splash svg { display: block; }
+  #boot-splash .word {
+    margin-top: 22px; z-index: 2;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 44px; letter-spacing: 8px; font-weight: 500;
+    animation: bsFadeUp 800ms 80ms cubic-bezier(.22,.61,.36,1) both;
+  }
+  #boot-splash .word em { font-style: italic; color: #D4AF5C; letter-spacing: 0; }
+  #boot-splash .sub {
+    margin-top: 14px; z-index: 2;
+    font-family: "Inter", sans-serif; font-size: 10px;
+    letter-spacing: 0.42em; text-transform: uppercase; color: #D4AF5C; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 14px;
+    animation: bsFadeUp 800ms 200ms cubic-bezier(.22,.61,.36,1) both;
+  }
+  #boot-splash .sub::before, #boot-splash .sub::after {
+    content: ""; width: 30px; height: 1px; background: rgba(212,175,92,0.55);
+  }
+  #boot-splash .bar {
+    position: absolute; left: 36px; right: 36px;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    height: 2px; background: rgba(212,175,92,0.18); overflow: hidden;
+    animation: bsFadeUp 700ms 320ms cubic-bezier(.22,.61,.36,1) both;
+  }
+  #boot-splash .bar::after {
+    content: ""; display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, #B89248, #E5C880);
+    animation: bsProgress 1800ms cubic-bezier(.4,0,.2,1) forwards;
+  }
+  @keyframes bsProgress { to { width: 96%; } }
+  @keyframes bsFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* Stage: covers the viewport edge to edge */
   .v-stage {
     position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
     overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* 390x844 design canvas, scaled with COVER so it always fills the screen */
+  .v-device-shell {
+    position: relative;
+    width: 390px; height: 844px;
+    transform-origin: center center;
+    will-change: transform;
   }
   .v-device {
     width: 390px; height: 844px;
-    transform-origin: center center;
     position: relative;
+    overflow: hidden;
+    background: #FBFAF7;
   }
-  .v-device.theme-dark  { background: #080A12; }
+  .v-device.theme-dark  { background: #050B1F; }
   .v-device.theme-amber { background: #1A0608; }
   .v-device.theme-light { background: #FBFAF7; }
-  .v-fade-in { animation: vFadeIn 320ms ease both; }
-  @keyframes vFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  /* hidden index dot */
-  .v-index-dot {
-    position: fixed;
-    left: calc(14px + env(safe-area-inset-left));
-    bottom: calc(14px + env(safe-area-inset-bottom));
-    width: 22px; height: 22px; border-radius: 11px;
-    background: rgba(212,175,92,0.15);
-    border: 1px solid rgba(212,175,92,0.35);
-    z-index: 120; cursor: pointer;
-    transition: background 160ms ease, transform 160ms ease;
+
+  /* iOS-native push/pop transitions between screens */
+  .v-slide  { animation: vSlideIn   380ms cubic-bezier(.22,.61,.36,1) both; }
+  .v-slide.back { animation-name: vSlideInBack; }
+  @keyframes vSlideIn     { from { opacity: 0; transform: translateX(40px); }  to { opacity: 1; transform: none; } }
+  @keyframes vSlideInBack { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+
+  /* Invisible presenter trigger — triple-tap the bottom-left corner */
+  .v-presenter-hit {
+    position: fixed; left: 0; bottom: 0;
+    width: 64px; height: 64px;
+    z-index: 200;
+    background: transparent;
   }
-  .v-index-dot:active { transform: scale(0.9); background: rgba(212,175,92,0.35); }
 </style>
 </head>
 <body>
+  <div id="boot-splash" aria-hidden="true">
+    <div class="ring"></div>
+    <div class="knot">
+      <svg viewBox="0 0 110 110" width="110" height="110">
+        <defs>
+          <linearGradient id="bsG" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#E5C880"/>
+            <stop offset="100%" stop-color="#B89248"/>
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#bsG)" stroke-width="1.5">
+          <circle cx="55" cy="38" r="22"/>
+          <circle cx="40" cy="64" r="22"/>
+          <circle cx="70" cy="64" r="22"/>
+        </g>
+      </svg>
+    </div>
+    <div class="word">VÉD<em>I</em>KA</div>
+    <div class="sub">Justicia Humana</div>
+    <div class="bar"></div>
+  </div>
+
   <div id="root"></div>
 
   <script>
@@ -63,6 +155,17 @@
         navigator.serviceWorker.register("sw.js").catch(() => {});
       });
     }
+    // Track the true dynamic viewport height (handles iOS Safari URL bar)
+    (function trackVh() {
+      const set = () => {
+        const h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+        document.documentElement.style.setProperty("--vh", h + "px");
+      };
+      set();
+      window.addEventListener("resize", set);
+      window.addEventListener("orientationchange", set);
+      if (window.visualViewport) window.visualViewport.addEventListener("resize", set);
+    })();
   </script>
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -80,7 +183,7 @@
     const PHONE_H = 844;
 
     const SCREENS = [
-      { id: "boot",    title: "Splash · Boot",                section: "00 · Marca",          theme: "dark",  Component: ScreenBoot,                    auto: 2600 },
+      { id: "boot",    title: "Splash · Boot",                section: "00 · Marca",          theme: "dark",  Component: ScreenBoot,                    auto: 2400 },
       { id: "auth",    title: "Acceso · Face ID",             section: "00 · Marca",          theme: "light", Component: ScreenAuth,                    auto: 2200 },
       { id: "role",    title: "Selección de rol",             section: "00 · Marca",          theme: "light", Component: ScreenRoleSelect },
       { id: "materia", title: "Onboarding · materia",         section: "01 · Ciudadano",      theme: "light", Component: ScreenMateria },
@@ -93,20 +196,25 @@
       { id: "root",    title: "Telemetría · balance",         section: "05 · Root",           theme: "dark",  Component: ScreenRoot },
     ];
 
+    const THEME_BG = { dark: "#050B1F", amber: "#1A0608", light: "#FBFAF7" };
+
     const idxFromHash = () => {
       const h = (location.hash || "").replace(/^#/, "").toLowerCase();
       const i = SCREENS.findIndex(s => s.id === h);
       return i >= 0 ? i : 0;
     };
 
-    function useViewportScale() {
+    // COVER scaling: design canvas always fills the viewport edge-to-edge.
+    // The 390x844 design has built-in safe-area padding, so the small overscan
+    // crops only padding on tall/wide phones — content stays fully visible.
+    function useCoverScale() {
       const [scale, setScale] = useState(1);
       useEffect(() => {
         const fit = () => {
           const vv = window.visualViewport;
           const vw = vv ? vv.width  : window.innerWidth;
           const vh = vv ? vv.height : window.innerHeight;
-          setScale(Math.min(vw / PHONE_W, vh / PHONE_H));
+          setScale(Math.max(vw / PHONE_W, vh / PHONE_H));
         };
         fit();
         window.addEventListener("resize", fit);
@@ -125,8 +233,8 @@
       const sections = {};
       SCREENS.forEach((s, i) => { (sections[s.section] = sections[s.section] || []).push({ ...s, idx: i }); });
       return (
-        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(8,10,18,0.86)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px, 100%)", maxHeight: "82vh", overflowY: "auto", background: "#0F1226", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 24, padding: 24, color: "#F5F0E1" }}>
+        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(5,11,31,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px, 100%)", maxHeight: "82vh", overflowY: "auto", background: "#0F1226", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 24, padding: 24, color: "#F5F0E1", boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
               <VedikaKnot size={26}/>
               <span className="v-serif" style={{ fontSize: 20, letterSpacing: 4 }}>
@@ -163,16 +271,45 @@
 
     function App() {
       const [idx, setIdx] = useState(idxFromHash);
+      const [direction, setDirection] = useState("fwd"); // "fwd" | "back"
       const [menuOpen, setMenuOpen] = useState(false);
-      const scale = useViewportScale();
+      const scale = useCoverScale();
       const cur = SCREENS[idx];
 
-      const next = useCallback(() => setIdx(i => (i + 1) % SCREENS.length), []);
-      const prev = useCallback(() => setIdx(i => (i - 1 + SCREENS.length) % SCREENS.length), []);
+      const go = useCallback((delta) => {
+        setDirection(delta >= 0 ? "fwd" : "back");
+        setIdx(i => {
+          const n = SCREENS.length;
+          return ((i + delta) % n + n) % n;
+        });
+      }, []);
+      const next = useCallback(() => go(+1), [go]);
+      const prev = useCallback(() => go(-1), [go]);
+      const jumpTo = useCallback((target) => {
+        setIdx(curIdx => {
+          setDirection(target >= curIdx ? "fwd" : "back");
+          return target;
+        });
+      }, []);
 
-      // Sync hash <-> state
+      // Hide the inline boot splash once React has rendered the first frame.
       useEffect(() => {
-        const onHash = () => setIdx(idxFromHash());
+        const el = document.getElementById("boot-splash");
+        if (!el) return;
+        // small delay so first React paint stabilizes
+        const t = setTimeout(() => {
+          el.classList.add("hide");
+          setTimeout(() => el.remove(), 520);
+        }, 350);
+        return () => clearTimeout(t);
+      }, []);
+
+      // Hash <-> state sync
+      useEffect(() => {
+        const onHash = () => {
+          const next = idxFromHash();
+          setIdx(curIdx => { setDirection(next >= curIdx ? "fwd" : "back"); return next; });
+        };
         window.addEventListener("hashchange", onHash);
         return () => window.removeEventListener("hashchange", onHash);
       }, []);
@@ -181,25 +318,23 @@
         if (location.hash !== want) history.replaceState(null, "", want);
       }, [idx]);
 
-      // Body bg follows screen theme so letterboxing blends in
+      // Per-screen theme-color so iOS status bar tint follows the current screen
       useEffect(() => {
-        const bg = cur.theme === "dark" ? "#080A12"
-                 : cur.theme === "amber" ? "#1A0608"
-                 : "#FBFAF7";
+        const bg = THEME_BG[cur.theme] || "#0B1733";
         document.documentElement.style.background = bg;
         document.body.style.background = bg;
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", bg);
       }, [cur.theme]);
 
-      // Auto-advance for cinematic screens (splash, face id)
+      // Auto-advance for the cinematic intro pair (splash + Face ID)
       useEffect(() => {
         if (!cur.auto) return;
-        const t = setTimeout(() => setIdx(i => (i + 1) % SCREENS.length), cur.auto);
+        const t = setTimeout(() => next(), cur.auto);
         return () => clearTimeout(t);
-      }, [cur.id, cur.auto]);
+      }, [cur.id, cur.auto, next]);
 
-      // Keyboard (desktop preview)
+      // Keyboard (desktop)
       useEffect(() => {
         const onKey = (e) => {
           if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
@@ -211,7 +346,7 @@
         return () => window.removeEventListener("keydown", onKey);
       }, [next, prev]);
 
-      // Horizontal swipe for prev/next
+      // Horizontal swipe / drag for prev/next
       const touch = useRef({ x: 0, y: 0, t: 0 });
       const onTouchStart = (e) => {
         const p = e.changedTouches[0];
@@ -222,10 +357,24 @@
         const dx = p.clientX - touch.current.x;
         const dy = p.clientY - touch.current.y;
         const dt = Date.now() - touch.current.t;
-        if (dt < 600 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dt < 700 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
           if (dx < 0) next(); else prev();
         }
       };
+
+      // Triple-tap on the invisible bottom-left corner opens the index
+      const tapRef = useRef({ n: 0, t: 0 });
+      const onCornerTap = useCallback((e) => {
+        e.stopPropagation();
+        const now = Date.now();
+        if (now - tapRef.current.t > 600) tapRef.current.n = 0;
+        tapRef.current.n += 1;
+        tapRef.current.t = now;
+        if (tapRef.current.n >= 3) {
+          tapRef.current.n = 0;
+          setMenuOpen(true);
+        }
+      }, []);
 
       const Comp = cur.Component;
 
@@ -235,19 +384,20 @@
                onClick={next}
                onTouchStart={onTouchStart}
                onTouchEnd={onTouchEnd}>
-            <div className={"v-device theme-" + cur.theme + " v-fade-in"}
-                 key={cur.id}
-                 style={{ transform: "scale(" + scale + ")" }}>
-              <Comp/>
+            <div className="v-device-shell" style={{ transform: "scale(" + scale + ")" }}>
+              <div className={"v-device theme-" + cur.theme + " v-slide" + (direction === "back" ? " back" : "")}
+                   key={cur.id}>
+                <Comp/>
+              </div>
             </div>
           </div>
 
-          <div className="v-index-dot"
-               onClick={(e) => { e.stopPropagation(); setMenuOpen(true); }}
-               title="Índice de pantallas"
-               aria-label="Abrir índice de pantallas"/>
+          {/* Invisible presenter hit-target: triple-tap to open the screen index */}
+          <div className="v-presenter-hit"
+               onClick={onCornerTap}
+               aria-hidden="true"/>
 
-          {menuOpen && <Menu idx={idx} onPick={(i) => { setIdx(i); setMenuOpen(false); }} onClose={() => setMenuOpen(false)}/>}
+          {menuOpen && <Menu idx={idx} onPick={(i) => { jumpTo(i); setMenuOpen(false); }} onClose={() => setMenuOpen(false)}/>}
         </div>
       );
     }
