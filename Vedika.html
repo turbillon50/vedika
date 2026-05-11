@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <title>Védika · Sistema legal triangular</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#0B1733"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Védika"/>
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
@@ -21,20 +22,42 @@
 <link rel="stylesheet" href="vedika.css"/>
 
 <style>
-  body { background: #0a0a0c; }
-  .canvas-host { position: fixed; inset: 0; }
-  /* design canvas section title overrides */
-  :root {
-    --dc-bg: #0a0a0c;
-    --dc-ink: #F5F0E1;
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0B1733; }
+  body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  #root { position: fixed; inset: 0; }
+  .v-stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
   }
+  .v-device {
+    width: 390px; height: 844px;
+    transform-origin: center center;
+    position: relative;
+  }
+  .v-device.theme-dark  { background: #080A12; }
+  .v-device.theme-amber { background: #1A0608; }
+  .v-device.theme-light { background: #FBFAF7; }
+  .v-fade-in { animation: vFadeIn 320ms ease both; }
+  @keyframes vFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* hidden index dot */
+  .v-index-dot {
+    position: fixed;
+    left: calc(14px + env(safe-area-inset-left));
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    width: 22px; height: 22px; border-radius: 11px;
+    background: rgba(212,175,92,0.15);
+    border: 1px solid rgba(212,175,92,0.35);
+    z-index: 120; cursor: pointer;
+    transition: background 160ms ease, transform 160ms ease;
+  }
+  .v-index-dot:active { transform: scale(0.9); background: rgba(212,175,92,0.35); }
 </style>
 </head>
 <body>
-  <div id="root" class="canvas-host"></div>
+  <div id="root"></div>
 
   <script>
-    // Registrar service worker (PWA offline)
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -52,38 +75,13 @@
   <script type="text/babel" src="screens-03-roles.jsx"></script>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useCallback } = React;
     const PHONE_W = 390;
     const PHONE_H = 844;
 
-    function Frame({ children, theme = "light" }) {
-      const bg = theme === "dark" ? "#080A12" : theme === "amber" ? "#1A0608" : "#FBFAF7";
-      const lightInk = theme === "dark" || theme === "amber";
-      return (
-        <div style={{
-          width: PHONE_W, height: PHONE_H, position: "relative",
-          background: bg, borderRadius: 48, overflow: "hidden",
-          boxShadow: "0 50px 100px -20px rgba(0,0,0,0.55), 0 0 0 11px #0A0B10, 0 0 0 12px #1F2230, 0 0 0 14px rgba(255,255,255,0.04)",
-        }}>
-          <div style={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", width: 122, height: 35, borderRadius: 22, background: "#000", zIndex: 60 }}/>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 54, zIndex: 55, padding: "20px 32px 0", display: "flex", justifyContent: "space-between", alignItems: "center", color: lightInk ? "#FBFAF7" : "#0B1733", fontFamily: "var(--sans)", fontSize: 15, fontWeight: 600, pointerEvents: "none" }}>
-            <span>9:41</span>
-            <span style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              <svg width="16" height="11" viewBox="0 0 16 11"><rect x="0" y="7" width="2.5" height="4" rx=".5" fill="currentColor"/><rect x="4" y="5" width="2.5" height="6" rx=".5" fill="currentColor"/><rect x="8" y="3" width="2.5" height="8" rx=".5" fill="currentColor"/><rect x="12" y="0" width="2.5" height="11" rx=".5" fill="currentColor"/></svg>
-              <svg width="22" height="11" viewBox="0 0 22 11"><rect x="0.5" y="0.5" width="18.5" height="10" rx="2.6" stroke="currentColor" strokeOpacity=".4" fill="none"/><rect x="2" y="2" width="15.5" height="7" rx="1.4" fill="currentColor"/></svg>
-            </span>
-          </div>
-          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 48 }}>
-            {children}
-          </div>
-          <div style={{ position: "absolute", bottom: 9, left: "50%", transform: "translateX(-50%)", width: 134, height: 5, borderRadius: 100, background: lightInk ? "rgba(251,250,247,0.6)" : "rgba(11,23,51,0.4)", zIndex: 70 }}/>
-        </div>
-      );
-    }
-
     const SCREENS = [
-      { id: "boot",    title: "Splash · Boot",                section: "00 · Marca",          theme: "dark",  Component: ScreenBoot },
-      { id: "auth",    title: "Acceso · Face ID",             section: "00 · Marca",          theme: "light", Component: ScreenAuth },
+      { id: "boot",    title: "Splash · Boot",                section: "00 · Marca",          theme: "dark",  Component: ScreenBoot,                    auto: 2600 },
+      { id: "auth",    title: "Acceso · Face ID",             section: "00 · Marca",          theme: "light", Component: ScreenAuth,                    auto: 2200 },
       { id: "role",    title: "Selección de rol",             section: "00 · Marca",          theme: "light", Component: ScreenRoleSelect },
       { id: "materia", title: "Onboarding · materia",         section: "01 · Ciudadano",      theme: "light", Component: ScreenMateria },
       { id: "panel",   title: "Panel personal",               section: "01 · Ciudadano",      theme: "light", Component: ScreenPanel },
@@ -101,30 +99,26 @@
       return i >= 0 ? i : 0;
     };
 
-    function Stage({ children }) {
-      const wrap = useRef(null);
+    function useViewportScale() {
       const [scale, setScale] = useState(1);
       useEffect(() => {
         const fit = () => {
-          if (!wrap.current) return;
-          const { width, height } = wrap.current.getBoundingClientRect();
-          const pad = 56;
-          const s = Math.min((width - pad) / PHONE_W, (height - pad) / PHONE_H, 1.1);
-          setScale(s > 0.2 ? s : 0.6);
+          const vv = window.visualViewport;
+          const vw = vv ? vv.width  : window.innerWidth;
+          const vh = vv ? vv.height : window.innerHeight;
+          setScale(Math.min(vw / PHONE_W, vh / PHONE_H));
         };
         fit();
-        const ro = new ResizeObserver(fit);
-        if (wrap.current) ro.observe(wrap.current);
         window.addEventListener("resize", fit);
-        return () => { ro.disconnect(); window.removeEventListener("resize", fit); };
+        window.addEventListener("orientationchange", fit);
+        if (window.visualViewport) window.visualViewport.addEventListener("resize", fit);
+        return () => {
+          window.removeEventListener("resize", fit);
+          window.removeEventListener("orientationchange", fit);
+          if (window.visualViewport) window.visualViewport.removeEventListener("resize", fit);
+        };
       }, []);
-      return (
-        <div ref={wrap} style={{ flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", minHeight: 0 }}>
-          <div style={{ transform: "scale(" + scale + ")", transformOrigin: "center center", transition: "transform 220ms ease" }}>
-            {children}
-          </div>
-        </div>
-      );
+      return scale;
     }
 
     function Menu({ idx, onPick, onClose }) {
@@ -132,16 +126,16 @@
       SCREENS.forEach((s, i) => { (sections[s.section] = sections[s.section] || []).push({ ...s, idx: i }); });
       return (
         <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(8,10,18,0.86)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px, 100%)", maxHeight: "82vh", overflowY: "auto", background: "#0F1226", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 24, padding: 26, color: "#F5F0E1" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-              <VedikaKnot size={28}/>
-              <span className="v-serif" style={{ fontSize: 22, letterSpacing: 4 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px, 100%)", maxHeight: "82vh", overflowY: "auto", background: "#0F1226", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 24, padding: 24, color: "#F5F0E1" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+              <VedikaKnot size={26}/>
+              <span className="v-serif" style={{ fontSize: 20, letterSpacing: 4 }}>
                 VÉD<span style={{ fontStyle: "italic", color: "#D4AF5C" }}>I</span>KA
               </span>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.55)", letterSpacing: 1.5 }}>· PANTALLAS</span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.55)", letterSpacing: 1.5 }}>· DEMO INDEX</span>
             </div>
             {Object.keys(sections).map(sec => (
-              <div key={sec} style={{ marginBottom: 18 }}>
+              <div key={sec} style={{ marginBottom: 14 }}>
                 <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: 2.5, color: "rgba(245,240,225,0.5)", marginBottom: 8 }}>{sec}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
                   {sections[sec].map(s => (
@@ -161,7 +155,7 @@
                 </div>
               </div>
             ))}
-            <button onClick={onClose} style={{ marginTop: 6, padding: "10px 16px", width: "100%", background: "rgba(245,240,225,0.06)", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 10, color: "#F5F0E1", fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1.5, cursor: "pointer" }}>CERRAR · ESC</button>
+            <button onClick={onClose} style={{ marginTop: 4, padding: "10px 16px", width: "100%", background: "rgba(245,240,225,0.06)", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 10, color: "#F5F0E1", fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1.5, cursor: "pointer" }}>CERRAR</button>
           </div>
         </div>
       );
@@ -170,69 +164,88 @@
     function App() {
       const [idx, setIdx] = useState(idxFromHash);
       const [menuOpen, setMenuOpen] = useState(false);
+      const scale = useViewportScale();
+      const cur = SCREENS[idx];
 
+      const next = useCallback(() => setIdx(i => (i + 1) % SCREENS.length), []);
+      const prev = useCallback(() => setIdx(i => (i - 1 + SCREENS.length) % SCREENS.length), []);
+
+      // Sync hash <-> state
       useEffect(() => {
         const onHash = () => setIdx(idxFromHash());
         window.addEventListener("hashchange", onHash);
         return () => window.removeEventListener("hashchange", onHash);
       }, []);
-
       useEffect(() => {
         const want = "#" + SCREENS[idx].id;
         if (location.hash !== want) history.replaceState(null, "", want);
       }, [idx]);
 
+      // Body bg follows screen theme so letterboxing blends in
+      useEffect(() => {
+        const bg = cur.theme === "dark" ? "#080A12"
+                 : cur.theme === "amber" ? "#1A0608"
+                 : "#FBFAF7";
+        document.documentElement.style.background = bg;
+        document.body.style.background = bg;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", bg);
+      }, [cur.theme]);
+
+      // Auto-advance for cinematic screens (splash, face id)
+      useEffect(() => {
+        if (!cur.auto) return;
+        const t = setTimeout(() => setIdx(i => (i + 1) % SCREENS.length), cur.auto);
+        return () => clearTimeout(t);
+      }, [cur.id, cur.auto]);
+
+      // Keyboard (desktop preview)
       useEffect(() => {
         const onKey = (e) => {
-          if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); setIdx(i => Math.min(SCREENS.length - 1, i + 1)); }
-          else if (e.key === "ArrowLeft") { e.preventDefault(); setIdx(i => Math.max(0, i - 1)); }
+          if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
+          else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
           else if (e.key === "Escape") setMenuOpen(false);
           else if (e.key === "m" || e.key === "M") setMenuOpen(o => !o);
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-      }, []);
+      }, [next, prev]);
 
-      const cur = SCREENS[idx];
-      const Comp = cur.Component;
-      const next = () => setIdx(i => Math.min(SCREENS.length - 1, i + 1));
-      const prev = () => setIdx(i => Math.max(0, i - 1));
-
-      const btn = {
-        padding: "9px 14px", background: "rgba(245,240,225,0.06)",
-        border: "1px solid rgba(245,240,225,0.14)", borderRadius: 10,
-        color: "#F5F0E1", fontFamily: "var(--mono)", fontSize: 11,
-        letterSpacing: 1.4, cursor: "pointer", whiteSpace: "nowrap",
+      // Horizontal swipe for prev/next
+      const touch = useRef({ x: 0, y: 0, t: 0 });
+      const onTouchStart = (e) => {
+        const p = e.changedTouches[0];
+        touch.current = { x: p.clientX, y: p.clientY, t: Date.now() };
+      };
+      const onTouchEnd = (e) => {
+        const p = e.changedTouches[0];
+        const dx = p.clientX - touch.current.x;
+        const dy = p.clientY - touch.current.y;
+        const dt = Date.now() - touch.current.t;
+        if (dt < 600 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          if (dx < 0) next(); else prev();
+        }
       };
 
+      const Comp = cur.Component;
+
       return (
-        <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "#0a0a0c", color: "#F5F0E1", fontFamily: "var(--sans)" }}>
-          <header style={{ flex: "0 0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 22px", borderBottom: "1px solid rgba(245,240,225,0.08)" }}>
-            <button onClick={() => setMenuOpen(true)} style={btn}>☰ PANTALLAS</button>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 auto", justifyContent: "center" }}>
-              <VedikaKnot size={22}/>
-              <span className="v-serif" style={{ fontSize: 18, letterSpacing: 4 }}>
-                VÉD<span style={{ fontStyle: "italic", color: "#D4AF5C" }}>I</span>KA
-              </span>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.55)", letterSpacing: 1.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                · {cur.section.toUpperCase()} · {cur.title.toUpperCase()} · {String(idx + 1).padStart(2, "0")}/{String(SCREENS.length).padStart(2, "0")}
-              </span>
+        <div>
+          <div className="v-stage"
+               onClick={next}
+               onTouchStart={onTouchStart}
+               onTouchEnd={onTouchEnd}>
+            <div className={"v-device theme-" + cur.theme + " v-fade-in"}
+                 key={cur.id}
+                 style={{ transform: "scale(" + scale + ")" }}>
+              <Comp/>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={prev} disabled={idx === 0} style={{ ...btn, opacity: idx === 0 ? 0.3 : 1 }}>← ANT</button>
-              <button onClick={next} disabled={idx === SCREENS.length - 1} style={{ ...btn, opacity: idx === SCREENS.length - 1 ? 0.3 : 1 }}>SIG →</button>
-            </div>
-          </header>
+          </div>
 
-          <Stage>
-            <div onClick={next} style={{ cursor: "pointer" }} title="Toca para avanzar">
-              <Frame theme={cur.theme} key={cur.id}><Comp/></Frame>
-            </div>
-          </Stage>
-
-          <footer style={{ flex: "0 0 auto", padding: "10px 22px", textAlign: "center", fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.4)", letterSpacing: 1.5, borderTop: "1px solid rgba(245,240,225,0.08)" }}>
-            TAP / ESPACIO / → AVANZA · ← RETROCEDE · M ABRE PANTALLAS · ESC CIERRA
-          </footer>
+          <div className="v-index-dot"
+               onClick={(e) => { e.stopPropagation(); setMenuOpen(true); }}
+               title="Índice de pantallas"
+               aria-label="Abrir índice de pantallas"/>
 
           {menuOpen && <Menu idx={idx} onPick={(i) => { setIdx(i); setMenuOpen(false); }} onClose={() => setMenuOpen(false)}/>}
         </div>
