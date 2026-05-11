@@ -1,0 +1,42 @@
+// Védika service worker — cache-first para uso offline
+const CACHE = "vedika-v1";
+const ASSETS = [
+  "./",
+  "./Vedika.html",
+  "./vedika.css",
+  "./vedika-kit.jsx",
+  "./design-canvas.jsx",
+  "./ios-frame.jsx",
+  "./screens-01-auth.jsx",
+  "./screens-02-citizen.jsx",
+  "./screens-03-roles.jsx",
+  "./manifest.json"
+];
+
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => null));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", e => {
+  if (e.request.method !== "GET") return;
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const fetched = fetch(e.request).then(resp => {
+        if (resp && resp.ok && resp.type === "basic") {
+          const clone = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return resp;
+      }).catch(() => cached);
+      return cached || fetched;
+    })
+  );
+});

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Védika · Sistema legal triangular</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#0B1733"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Védika"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="vedika.css"/>
+
+<style>
+  body { background: #0a0a0c; }
+  .canvas-host { position: fixed; inset: 0; }
+  /* design canvas section title overrides */
+  :root {
+    --dc-bg: #0a0a0c;
+    --dc-ink: #F5F0E1;
+  }
+</style>
+</head>
+<body>
+  <div id="root" class="canvas-host"></div>
+
+  <script>
+    // Registrar service worker (PWA offline)
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="vedika-kit.jsx"></script>
+  <script type="text/babel" src="screens-01-auth.jsx"></script>
+  <script type="text/babel" src="screens-02-citizen.jsx"></script>
+  <script type="text/babel" src="screens-03-roles.jsx"></script>
+
+  <script type="text/babel">
+    const PHONE_W = 390;
+    const PHONE_H = 844;
+
+    function Frame({ children, theme = "light" }) {
+      const bg = theme === "dark" ? "#080A12" : theme === "amber" ? "#1A0608" : "#FBFAF7";
+      return (
+        <div style={{
+          width: PHONE_W, height: PHONE_H, position: "relative",
+          background: bg, borderRadius: 48, overflow: "hidden",
+          boxShadow: "0 50px 100px -20px rgba(0,0,0,0.55), 0 0 0 11px #0A0B10, 0 0 0 12px #1F2230, 0 0 0 14px rgba(255,255,255,0.04)",
+        }}>
+          {/* dynamic island */}
+          <div style={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", width: 122, height: 35, borderRadius: 22, background: "#000", zIndex: 60 }}/>
+          {/* status bar */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 54, zIndex: 55, padding: "20px 32px 0", display: "flex", justifyContent: "space-between", alignItems: "center", color: (theme === "dark" || theme === "amber") ? "#FBFAF7" : "#0B1733", fontFamily: "var(--sans)", fontSize: 15, fontWeight: 600, pointerEvents: "none" }}>
+            <span>9:41</span>
+            <span style={{ display: "flex", gap: 5, alignItems: "center" }}>
+              <svg width="16" height="11" viewBox="0 0 16 11"><rect x="0" y="7" width="2.5" height="4" rx=".5" fill="currentColor"/><rect x="4" y="5" width="2.5" height="6" rx=".5" fill="currentColor"/><rect x="8" y="3" width="2.5" height="8" rx=".5" fill="currentColor"/><rect x="12" y="0" width="2.5" height="11" rx=".5" fill="currentColor"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11"><rect x="0.5" y="0.5" width="18.5" height="10" rx="2.6" stroke="currentColor" strokeOpacity=".4" fill="none"/><rect x="2" y="2" width="15.5" height="7" rx="1.4" fill="currentColor"/></svg>
+            </span>
+          </div>
+          {/* content viewport */}
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 48 }}>
+            {children}
+          </div>
+          {/* home indicator */}
+          <div style={{ position: "absolute", bottom: 9, left: "50%", transform: "translateX(-50%)", width: 134, height: 5, borderRadius: 100, background: (theme === "dark" || theme === "amber") ? "rgba(251,250,247,0.6)" : "rgba(11,23,51,0.4)", zIndex: 70 }}/>
+        </div>
+      );
+    }
+
+    const FRAME_W = PHONE_W + 32;
+    const FRAME_H = PHONE_H + 32;
+
+    function App() {
+      return (
+        <DesignCanvas
+          title={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
+              <VedikaKnot size={32}/>
+              <span className="v-serif" style={{ fontSize: 24, letterSpacing: 5, color: "#F5F0E1" }}>
+                VÉD<span style={{ fontStyle: "italic", color: "#D4AF5C", letterSpacing: 0 }}>I</span>KA
+              </span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.45)", letterSpacing: 2, marginLeft: 8 }}>· SISTEMA LEGAL TRIANGULAR · 2026</span>
+            </span>
+          }
+        >
+          <DCSection id="brand" title="00 · Marca & Entrada">
+            <DCArtboard id="boot"  label="Splash · Boot" width={FRAME_W} height={FRAME_H}>
+              <Frame theme="dark"><ScreenBoot/></Frame>
+            </DCArtboard>
+            <DCArtboard id="auth"  label="Acceso · FaceID" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenAuth/></Frame>
+            </DCArtboard>
+            <DCArtboard id="role"  label="Selección de rol" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenRoleSelect/></Frame>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="ciudadano" title="01 · Ciudadano">
+            <DCArtboard id="materia" label="Onboarding · materia" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenMateria/></Frame>
+            </DCArtboard>
+            <DCArtboard id="panel"   label="Panel personal" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenPanel/></Frame>
+            </DCArtboard>
+            <DCArtboard id="caso"    label="Detalle del caso" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenCaseDetail/></Frame>
+            </DCArtboard>
+            <DCArtboard id="boveda"  label="Bóveda blindada" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenBoveda/></Frame>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="emergencia" title="02 · Código Rojo Penal">
+            <DCArtboard id="rojo"    label="Defensa en ruta · SLA" width={FRAME_W} height={FRAME_H}>
+              <Frame theme="amber"><ScreenCodigoRojo/></Frame>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="especialista" title="03 · Especialista">
+            <DCArtboard id="esp"     label="Despacho · agenda triangular" width={FRAME_W} height={FRAME_H}>
+              <Frame theme="dark"><ScreenEspecialistaDashboard/></Frame>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="entidad" title="04 · Entidad — Notaría 23">
+            <DCArtboard id="notaria" label="Pipeline notarial" width={FRAME_W} height={FRAME_H}>
+              <Frame><ScreenEntidadNotaria/></Frame>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="root" title="05 · Supervisión Root">
+            <DCArtboard id="root-screen" label="Telemetría · balance triangular" width={FRAME_W} height={FRAME_H}>
+              <Frame theme="dark"><ScreenRoot/></Frame>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>

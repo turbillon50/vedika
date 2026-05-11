@@ -1,0 +1,89 @@
+/* Védika — design tokens
+   Editorial premium: navy + gold, Playfair Display + Inter.
+   ============================================================== */
+
+:root {
+  /* color */
+  --v-navy-1:   #050F23;  /* deepest */
+  --v-navy-2:   #0A1630;  /* canvas */
+  --v-navy-3:   #122046;  /* elevated card */
+  --v-navy-4:   #1B2C5C;  /* hover / border bright */
+  --v-line:     rgba(200, 210, 230, 0.10);
+  --v-line-2:   rgba(200, 210, 230, 0.16);
+
+  --v-gold:     #D4AF37;
+  --v-gold-2:   #E0C35F;
+  --v-gold-3:   #B8941F;
+  --v-gold-soft:rgba(212, 175, 55, 0.10);
+  --v-gold-glow:rgba(212, 175, 55, 0.22);
+
+  --v-cream:    #F5F5F0;
+  --v-cream-2:  #E9E7DC;
+  --v-text:     #C8D2E6;  /* body, muted */
+  --v-text-dim: rgba(200, 210, 230, 0.55);
+  --v-text-faint: rgba(200, 210, 230, 0.32);
+
+  /* semantics */
+  --v-red:      #C24B4B;
+  --v-red-soft: rgba(194, 75, 75, 0.12);
+  --v-emerald:  #4F9D7B;
+  --v-amber:    #D89B4E;
+
+  /* type */
+  --v-serif: "Playfair Display", "Cormorant Garamond", "Times New Roman", serif;
+  --v-sans:  "Inter", "SF Pro Display", -apple-system, system-ui, sans-serif;
+  --v-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* radii / motion */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--v-sans);
+  color: var(--v-text);
+  background: var(--v-navy-2);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Reusable utility classes */
+.v-serif { font-family: var(--v-serif); font-weight: 500; letter-spacing: -0.01em; }
+.v-mono { font-family: var(--v-mono); }
+.v-eyebrow {
+  font-family: var(--v-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--v-gold);
+  font-weight: 500;
+}
+.v-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--v-gold) 20%, var(--v-gold) 80%, transparent);
+  opacity: 0.4;
+}
+.v-hairline { background: var(--v-line); height: 1px; }
+.v-num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+/* gold ornament */
+.v-ornament {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--v-gold);
+}
+.v-ornament::before, .v-ornament::after {
+  content: ""; width: 24px; height: 1px; background: var(--v-gold); opacity: 0.5;
+}
+
+/* artboard reset */
+.v-screen {
+  width: 100%; height: 100%;
+  background: var(--v-navy-2);
+  color: var(--v-text);
+  font-family: var(--v-sans);
+  overflow: hidden;
+  position: relative;
+}
