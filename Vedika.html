@@ -46,111 +46,196 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-  <script type="text/babel" src="design-canvas.jsx"></script>
   <script type="text/babel" src="vedika-kit.jsx"></script>
   <script type="text/babel" src="screens-01-auth.jsx"></script>
   <script type="text/babel" src="screens-02-citizen.jsx"></script>
   <script type="text/babel" src="screens-03-roles.jsx"></script>
 
   <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
     const PHONE_W = 390;
     const PHONE_H = 844;
 
     function Frame({ children, theme = "light" }) {
       const bg = theme === "dark" ? "#080A12" : theme === "amber" ? "#1A0608" : "#FBFAF7";
+      const lightInk = theme === "dark" || theme === "amber";
       return (
         <div style={{
           width: PHONE_W, height: PHONE_H, position: "relative",
           background: bg, borderRadius: 48, overflow: "hidden",
           boxShadow: "0 50px 100px -20px rgba(0,0,0,0.55), 0 0 0 11px #0A0B10, 0 0 0 12px #1F2230, 0 0 0 14px rgba(255,255,255,0.04)",
         }}>
-          {/* dynamic island */}
           <div style={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", width: 122, height: 35, borderRadius: 22, background: "#000", zIndex: 60 }}/>
-          {/* status bar */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 54, zIndex: 55, padding: "20px 32px 0", display: "flex", justifyContent: "space-between", alignItems: "center", color: (theme === "dark" || theme === "amber") ? "#FBFAF7" : "#0B1733", fontFamily: "var(--sans)", fontSize: 15, fontWeight: 600, pointerEvents: "none" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 54, zIndex: 55, padding: "20px 32px 0", display: "flex", justifyContent: "space-between", alignItems: "center", color: lightInk ? "#FBFAF7" : "#0B1733", fontFamily: "var(--sans)", fontSize: 15, fontWeight: 600, pointerEvents: "none" }}>
             <span>9:41</span>
             <span style={{ display: "flex", gap: 5, alignItems: "center" }}>
               <svg width="16" height="11" viewBox="0 0 16 11"><rect x="0" y="7" width="2.5" height="4" rx=".5" fill="currentColor"/><rect x="4" y="5" width="2.5" height="6" rx=".5" fill="currentColor"/><rect x="8" y="3" width="2.5" height="8" rx=".5" fill="currentColor"/><rect x="12" y="0" width="2.5" height="11" rx=".5" fill="currentColor"/></svg>
               <svg width="22" height="11" viewBox="0 0 22 11"><rect x="0.5" y="0.5" width="18.5" height="10" rx="2.6" stroke="currentColor" strokeOpacity=".4" fill="none"/><rect x="2" y="2" width="15.5" height="7" rx="1.4" fill="currentColor"/></svg>
             </span>
           </div>
-          {/* content viewport */}
           <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 48 }}>
             {children}
           </div>
-          {/* home indicator */}
-          <div style={{ position: "absolute", bottom: 9, left: "50%", transform: "translateX(-50%)", width: 134, height: 5, borderRadius: 100, background: (theme === "dark" || theme === "amber") ? "rgba(251,250,247,0.6)" : "rgba(11,23,51,0.4)", zIndex: 70 }}/>
+          <div style={{ position: "absolute", bottom: 9, left: "50%", transform: "translateX(-50%)", width: 134, height: 5, borderRadius: 100, background: lightInk ? "rgba(251,250,247,0.6)" : "rgba(11,23,51,0.4)", zIndex: 70 }}/>
         </div>
       );
     }
 
-    const FRAME_W = PHONE_W + 32;
-    const FRAME_H = PHONE_H + 32;
+    const SCREENS = [
+      { id: "boot",    title: "Splash · Boot",                section: "00 · Marca",          theme: "dark",  Component: ScreenBoot },
+      { id: "auth",    title: "Acceso · Face ID",             section: "00 · Marca",          theme: "light", Component: ScreenAuth },
+      { id: "role",    title: "Selección de rol",             section: "00 · Marca",          theme: "light", Component: ScreenRoleSelect },
+      { id: "materia", title: "Onboarding · materia",         section: "01 · Ciudadano",      theme: "light", Component: ScreenMateria },
+      { id: "panel",   title: "Panel personal",               section: "01 · Ciudadano",      theme: "light", Component: ScreenPanel },
+      { id: "caso",    title: "Detalle del caso",             section: "01 · Ciudadano",      theme: "light", Component: ScreenCaseDetail },
+      { id: "boveda",  title: "Bóveda blindada",              section: "01 · Ciudadano",      theme: "light", Component: ScreenBoveda },
+      { id: "rojo",    title: "Defensa en ruta · SLA",        section: "02 · Código Rojo",    theme: "amber", Component: ScreenCodigoRojo },
+      { id: "esp",     title: "Despacho · agenda triangular", section: "03 · Especialista",   theme: "dark",  Component: ScreenEspecialistaDashboard },
+      { id: "notaria", title: "Pipeline notarial",            section: "04 · Entidad",        theme: "light", Component: ScreenEntidadNotaria },
+      { id: "root",    title: "Telemetría · balance",         section: "05 · Root",           theme: "dark",  Component: ScreenRoot },
+    ];
+
+    const idxFromHash = () => {
+      const h = (location.hash || "").replace(/^#/, "").toLowerCase();
+      const i = SCREENS.findIndex(s => s.id === h);
+      return i >= 0 ? i : 0;
+    };
+
+    function Stage({ children }) {
+      const wrap = useRef(null);
+      const [scale, setScale] = useState(1);
+      useEffect(() => {
+        const fit = () => {
+          if (!wrap.current) return;
+          const { width, height } = wrap.current.getBoundingClientRect();
+          const pad = 56;
+          const s = Math.min((width - pad) / PHONE_W, (height - pad) / PHONE_H, 1.1);
+          setScale(s > 0.2 ? s : 0.6);
+        };
+        fit();
+        const ro = new ResizeObserver(fit);
+        if (wrap.current) ro.observe(wrap.current);
+        window.addEventListener("resize", fit);
+        return () => { ro.disconnect(); window.removeEventListener("resize", fit); };
+      }, []);
+      return (
+        <div ref={wrap} style={{ flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", minHeight: 0 }}>
+          <div style={{ transform: "scale(" + scale + ")", transformOrigin: "center center", transition: "transform 220ms ease" }}>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function Menu({ idx, onPick, onClose }) {
+      const sections = {};
+      SCREENS.forEach((s, i) => { (sections[s.section] = sections[s.section] || []).push({ ...s, idx: i }); });
+      return (
+        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(8,10,18,0.86)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px, 100%)", maxHeight: "82vh", overflowY: "auto", background: "#0F1226", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 24, padding: 26, color: "#F5F0E1" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+              <VedikaKnot size={28}/>
+              <span className="v-serif" style={{ fontSize: 22, letterSpacing: 4 }}>
+                VÉD<span style={{ fontStyle: "italic", color: "#D4AF5C" }}>I</span>KA
+              </span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.55)", letterSpacing: 1.5 }}>· PANTALLAS</span>
+            </div>
+            {Object.keys(sections).map(sec => (
+              <div key={sec} style={{ marginBottom: 18 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: 2.5, color: "rgba(245,240,225,0.5)", marginBottom: 8 }}>{sec}</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+                  {sections[sec].map(s => (
+                    <button key={s.id} onClick={() => onPick(s.idx)} style={{
+                      textAlign: "left", padding: "12px 14px",
+                      background: s.idx === idx ? "rgba(212,175,92,0.18)" : "rgba(245,240,225,0.04)",
+                      border: s.idx === idx ? "1px solid rgba(212,175,92,0.45)" : "1px solid rgba(245,240,225,0.08)",
+                      borderRadius: 12, color: "#F5F0E1", cursor: "pointer",
+                      fontFamily: "var(--sans)", fontSize: 13,
+                    }}>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.55)", letterSpacing: 1.5, marginBottom: 4 }}>
+                        {String(s.idx + 1).padStart(2, "0")} · #{s.id}
+                      </div>
+                      {s.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <button onClick={onClose} style={{ marginTop: 6, padding: "10px 16px", width: "100%", background: "rgba(245,240,225,0.06)", border: "1px solid rgba(245,240,225,0.12)", borderRadius: 10, color: "#F5F0E1", fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1.5, cursor: "pointer" }}>CERRAR · ESC</button>
+          </div>
+        </div>
+      );
+    }
 
     function App() {
+      const [idx, setIdx] = useState(idxFromHash);
+      const [menuOpen, setMenuOpen] = useState(false);
+
+      useEffect(() => {
+        const onHash = () => setIdx(idxFromHash());
+        window.addEventListener("hashchange", onHash);
+        return () => window.removeEventListener("hashchange", onHash);
+      }, []);
+
+      useEffect(() => {
+        const want = "#" + SCREENS[idx].id;
+        if (location.hash !== want) history.replaceState(null, "", want);
+      }, [idx]);
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); setIdx(i => Math.min(SCREENS.length - 1, i + 1)); }
+          else if (e.key === "ArrowLeft") { e.preventDefault(); setIdx(i => Math.max(0, i - 1)); }
+          else if (e.key === "Escape") setMenuOpen(false);
+          else if (e.key === "m" || e.key === "M") setMenuOpen(o => !o);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, []);
+
+      const cur = SCREENS[idx];
+      const Comp = cur.Component;
+      const next = () => setIdx(i => Math.min(SCREENS.length - 1, i + 1));
+      const prev = () => setIdx(i => Math.max(0, i - 1));
+
+      const btn = {
+        padding: "9px 14px", background: "rgba(245,240,225,0.06)",
+        border: "1px solid rgba(245,240,225,0.14)", borderRadius: 10,
+        color: "#F5F0E1", fontFamily: "var(--mono)", fontSize: 11,
+        letterSpacing: 1.4, cursor: "pointer", whiteSpace: "nowrap",
+      };
+
       return (
-        <DesignCanvas
-          title={
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
-              <VedikaKnot size={32}/>
-              <span className="v-serif" style={{ fontSize: 24, letterSpacing: 5, color: "#F5F0E1" }}>
-                VÉD<span style={{ fontStyle: "italic", color: "#D4AF5C", letterSpacing: 0 }}>I</span>KA
+        <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "#0a0a0c", color: "#F5F0E1", fontFamily: "var(--sans)" }}>
+          <header style={{ flex: "0 0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 22px", borderBottom: "1px solid rgba(245,240,225,0.08)" }}>
+            <button onClick={() => setMenuOpen(true)} style={btn}>☰ PANTALLAS</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 auto", justifyContent: "center" }}>
+              <VedikaKnot size={22}/>
+              <span className="v-serif" style={{ fontSize: 18, letterSpacing: 4 }}>
+                VÉD<span style={{ fontStyle: "italic", color: "#D4AF5C" }}>I</span>KA
               </span>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.45)", letterSpacing: 2, marginLeft: 8 }}>· SISTEMA LEGAL TRIANGULAR · 2026</span>
-            </span>
-          }
-        >
-          <DCSection id="brand" title="00 · Marca & Entrada">
-            <DCArtboard id="boot"  label="Splash · Boot" width={FRAME_W} height={FRAME_H}>
-              <Frame theme="dark"><ScreenBoot/></Frame>
-            </DCArtboard>
-            <DCArtboard id="auth"  label="Acceso · FaceID" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenAuth/></Frame>
-            </DCArtboard>
-            <DCArtboard id="role"  label="Selección de rol" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenRoleSelect/></Frame>
-            </DCArtboard>
-          </DCSection>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.55)", letterSpacing: 1.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                · {cur.section.toUpperCase()} · {cur.title.toUpperCase()} · {String(idx + 1).padStart(2, "0")}/{String(SCREENS.length).padStart(2, "0")}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={prev} disabled={idx === 0} style={{ ...btn, opacity: idx === 0 ? 0.3 : 1 }}>← ANT</button>
+              <button onClick={next} disabled={idx === SCREENS.length - 1} style={{ ...btn, opacity: idx === SCREENS.length - 1 ? 0.3 : 1 }}>SIG →</button>
+            </div>
+          </header>
 
-          <DCSection id="ciudadano" title="01 · Ciudadano">
-            <DCArtboard id="materia" label="Onboarding · materia" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenMateria/></Frame>
-            </DCArtboard>
-            <DCArtboard id="panel"   label="Panel personal" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenPanel/></Frame>
-            </DCArtboard>
-            <DCArtboard id="caso"    label="Detalle del caso" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenCaseDetail/></Frame>
-            </DCArtboard>
-            <DCArtboard id="boveda"  label="Bóveda blindada" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenBoveda/></Frame>
-            </DCArtboard>
-          </DCSection>
+          <Stage>
+            <div onClick={next} style={{ cursor: "pointer" }} title="Toca para avanzar">
+              <Frame theme={cur.theme} key={cur.id}><Comp/></Frame>
+            </div>
+          </Stage>
 
-          <DCSection id="emergencia" title="02 · Código Rojo Penal">
-            <DCArtboard id="rojo"    label="Defensa en ruta · SLA" width={FRAME_W} height={FRAME_H}>
-              <Frame theme="amber"><ScreenCodigoRojo/></Frame>
-            </DCArtboard>
-          </DCSection>
+          <footer style={{ flex: "0 0 auto", padding: "10px 22px", textAlign: "center", fontFamily: "var(--mono)", fontSize: 10, color: "rgba(245,240,225,0.4)", letterSpacing: 1.5, borderTop: "1px solid rgba(245,240,225,0.08)" }}>
+            TAP / ESPACIO / → AVANZA · ← RETROCEDE · M ABRE PANTALLAS · ESC CIERRA
+          </footer>
 
-          <DCSection id="especialista" title="03 · Especialista">
-            <DCArtboard id="esp"     label="Despacho · agenda triangular" width={FRAME_W} height={FRAME_H}>
-              <Frame theme="dark"><ScreenEspecialistaDashboard/></Frame>
-            </DCArtboard>
-          </DCSection>
-
-          <DCSection id="entidad" title="04 · Entidad — Notaría 23">
-            <DCArtboard id="notaria" label="Pipeline notarial" width={FRAME_W} height={FRAME_H}>
-              <Frame><ScreenEntidadNotaria/></Frame>
-            </DCArtboard>
-          </DCSection>
-
-          <DCSection id="root" title="05 · Supervisión Root">
-            <DCArtboard id="root-screen" label="Telemetría · balance triangular" width={FRAME_W} height={FRAME_H}>
-              <Frame theme="dark"><ScreenRoot/></Frame>
-            </DCArtboard>
-          </DCSection>
-        </DesignCanvas>
+          {menuOpen && <Menu idx={idx} onPick={(i) => { setIdx(i); setMenuOpen(false); }} onClose={() => setMenuOpen(false)}/>}
+        </div>
       );
     }
 
